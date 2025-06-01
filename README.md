@@ -173,8 +173,77 @@ INSERT INTO compra (cliente_id, produto_id, quantidade) VALUES
 - `PUT /api/compra/{id}` — Atualiza compra
 - `DELETE /api/compra/{id}` — Remove compra
 
-### Health Check
-- `GET /health` — Verifica saúde da API e conexão com banco
+### Health Check e Monitoramento
+- `GET /health` — Health check detalhado com status de todos os servidores de banco
+- `GET /api/health` — Health check via controller com informações organizadas
+- `GET /api/health/simple` — Verificação rápida do status da API
+- `GET /api/health/version` — Informações detalhadas sobre versão e ambiente
+
+#### Exemplo de Resposta do Health Check (`/health`)
+```json
+{
+  "status": "healthy",
+  "totalDuration": 45.23,
+  "results": {
+    "database_health_check": {
+      "status": "healthy",
+      "description": "Todos os serviços estão funcionando corretamente",
+      "duration": "44.15ms",
+      "data": {
+        "api": {
+          "status": "healthy",
+          "version": "1.0.0",
+          "environment": "Development",
+          "uptime": "00.02:15:30",
+          "startTime": "2024-01-15T10:30:00Z",
+          "timestamp": "2024-01-15T12:45:30Z"
+        },
+        "primary": {
+          "status": "healthy",
+          "responseTimeMs": 12,
+          "databaseName": "strongdatabase_primary",
+          "user": "primary_user",
+          "serverAddress": "172.18.0.2",
+          "serverPort": 5432,
+          "postgresqlVersion": "16.1",
+          "lastCheck": "2024-01-15T12:45:30Z"
+        },
+        "standby": {
+          "status": "healthy",
+          "responseTimeMs": 15,
+          "databaseName": "strongdatabase_standby",
+          "user": "standby_user",
+          "serverAddress": "172.18.0.3",
+          "serverPort": 5432,
+          "postgresqlVersion": "16.1",
+          "lastCheck": "2024-01-15T12:45:30Z"
+        },
+        "replica1": {
+          "status": "healthy",
+          "responseTimeMs": 8,
+          "databaseName": "strongdatabase_replica1",
+          "user": "replica1_user",
+          "serverAddress": "172.18.0.4",
+          "serverPort": 5432,
+          "postgresqlVersion": "16.1",
+          "lastCheck": "2024-01-15T12:45:30Z"
+        },
+        "replica2": {
+          "status": "healthy",
+          "responseTimeMs": 10,
+          "databaseName": "strongdatabase_replica2",
+          "user": "replica2_user",
+          "serverAddress": "172.18.0.5",
+          "serverPort": 5432,
+          "postgresqlVersion": "16.1",
+          "lastCheck": "2024-01-15T12:45:30Z"
+        },
+        "totalCheckDurationMs": 45
+      }
+    }
+  }
+}
+```
 
 ---
 
@@ -240,7 +309,17 @@ synchronous_standby_names = 'standby-db'
 
 ### Testar Health Check
 ```sh
+# Health check detalhado (endpoint principal)
 curl http://localhost:5000/health
+
+# Health check via controller
+curl http://localhost:5000/api/health
+
+# Verificação rápida da API
+curl http://localhost:5000/api/health/simple
+
+# Informações de versão
+curl http://localhost:5000/api/health/version
 ```
 
 ### Listar Clientes
@@ -258,8 +337,12 @@ curl -X POST http://localhost:5000/api/cliente -H "Content-Type: application/jso
    ```sh
    docker stop primary-db
    ```
-2. Faça uma escrita (POST): a API irá redirecionar para o standby automaticamente.
-3. Logs mostrarão o fallback.
+2. Teste o health check para ver o status dos servidores:
+   ```sh
+   curl http://localhost:5000/health
+   ```
+3. Faça uma escrita (POST): a API irá redirecionar para o standby automaticamente.
+4. Logs mostrarão o fallback.
 
 ---
 

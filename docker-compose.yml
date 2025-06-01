@@ -13,6 +13,7 @@ services:
     volumes:
       - ./scripts/create_primary.sql:/docker-entrypoint-initdb.d/create_primary.sql:ro
       - ./docker/primary/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./docker/primary/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     networks:
       - strongdatabase_net
 
