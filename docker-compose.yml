@@ -1,0 +1,89 @@
+version: '3.9'
+
+services:
+  primary-db:
+    image: postgres:16
+    container_name: primary-db
+    environment:
+      POSTGRES_DB: strongdatabase_primary
+      POSTGRES_USER: primary_user
+      POSTGRES_PASSWORD: primary_pass
+    ports:
+      - '5433:5432'
+    volumes:
+      - ./scripts/create_primary.sql:/docker-entrypoint-initdb.d/create_primary.sql:ro
+      - ./docker/primary/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    networks:
+      - strongdatabase_net
+
+  standby-db:
+    image: postgres:16
+    container_name: standby-db
+    environment:
+      POSTGRES_DB: strongdatabase_standby
+      POSTGRES_USER: standby_user
+      POSTGRES_PASSWORD: standby_pass
+    ports:
+      - '5434:5432'
+    entrypoint: ["/docker-entrypoint-initdb.d/standby-entrypoint.sh"]
+    volumes:
+      - ./scripts/create_standby.sql:/docker-entrypoint-initdb.d/create_standby.sql:ro
+      - ./docker/standby/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./docker/standby/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./docker/standby/standby-entrypoint.sh:/docker-entrypoint-initdb.d/standby-entrypoint.sh:ro
+    networks:
+      - strongdatabase_net
+
+  replica1-db:
+    image: postgres:16
+    container_name: replica1-db
+    environment:
+      POSTGRES_DB: strongdatabase_replica1
+      POSTGRES_USER: replica1_user
+      POSTGRES_PASSWORD: replica1_pass
+    ports:
+      - '5435:5432'
+    entrypoint: ["/docker-entrypoint-initdb.d/replica-entrypoint.sh"]
+    volumes:
+      - ./scripts/create_replica1.sql:/docker-entrypoint-initdb.d/create_replica1.sql:ro
+      - ./docker/replica1/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./docker/replica1/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./docker/replica1/replica-entrypoint.sh:/docker-entrypoint-initdb.d/replica-entrypoint.sh:ro
+    networks:
+      - strongdatabase_net
+
+  replica2-db:
+    image: postgres:16
+    container_name: replica2-db
+    environment:
+      POSTGRES_DB: strongdatabase_replica2
+      POSTGRES_USER: replica2_user
+      POSTGRES_PASSWORD: replica2_pass
+    ports:
+      - '5436:5432'
+    entrypoint: ["/docker-entrypoint-initdb.d/replica-entrypoint.sh"]
+    volumes:
+      - ./scripts/create_replica2.sql:/docker-entrypoint-initdb.d/create_replica2.sql:ro
+      - ./docker/replica2/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./docker/replica2/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./docker/replica2/replica-entrypoint.sh:/docker-entrypoint-initdb.d/replica-entrypoint.sh:ro
+    networks:
+      - strongdatabase_net
+
+  api:
+    build:
+      context: .
+      dockerfile: StrongDatabase.Api/Dockerfile
+    container_name: strongdatabase-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    ports:
+      - "5000:80"
+    depends_on:
+      - primary-db
+    networks:
+      - strongdatabase_net
+
+networks:
+  strongdatabase_net:
+    driver: bridge 
