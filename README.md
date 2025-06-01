@@ -53,6 +53,70 @@ StrongDatabase/
 - Se o primário cair, a aplicação redireciona escritas para o standby
 - Se todas as réplicas e o primário caírem, leituras vão para o standby
 
+#### 🔎 Como funciona a sincronização síncrona no PostgreSQL
+
+A sincronização síncrona em bancos de dados, como no PostgreSQL, garante que os dados escritos no banco primário sejam replicados para o banco standby antes de confirmar a transação ao cliente. Isso assegura zero perda de dados em caso de falha do primário.
+
+**Como funciona:**
+- **Escrita no primário:** Quando uma transação (INSERT, UPDATE, DELETE) é executada no banco primário, os dados são registrados no WAL (Write-Ahead Log), um log de transações.
+- **Envio ao standby:** O WAL é enviado ao banco standby em tempo real via streaming replication.
+- **Confirmação síncrona:** O primário aguarda a confirmação do standby de que os dados do WAL foram recebidos e aplicados (ou pelo menos gravados em disco, dependendo da configuração).
+- **Commit no primário:** Somente após a confirmação do standby, o primário confirma a transação ao cliente.
+- **Failover seguro:** Se o primário falhar, o standby já tem todos os dados confirmados, permitindo assumir como novo primário sem perda.
+
+**Operações nos bastidores:**
+- **WAL Streaming:** O primário envia os registros do WAL para o standby por uma conexão TCP (via wal_sender no primário e wal_receiver no standby).
+- **Synchronous Commit:** Configurado com `synchronous_commit = on` e `synchronous_standby_names` no postgresql.conf do primário, especificando o standby.
+- **Handshaking:** O standby confirma a recepção/aplicação do WAL, e o primário aguarda essa resposta antes de prosseguir.
+- **Latência:** Como o primário espera a confirmação, há um pequeno aumento na latência das transações, mas isso garante consistência.
+
+**Configuração típica (PostgreSQL):**
+```conf
+# postgresql.conf (primário)
+wal_level = replica
+synchronous_commit = on
+synchronous_standby_names = 'standby-db'
+max_wal_senders = 10
+```
+
+**Trade-offs:**
+- **Vantagem:** Zero perda de dados, ideal para sistemas críticos.
+- **Desvantagem:** Maior latência, pois o primário aguarda o standby.
+
+> **Resumindo:**
+> A sincronização síncrona usa o WAL para replicar dados em tempo real, aguardando confirmação do standby antes de commit, garantindo consistência total.
+
+#### 🔎 Como funciona a replicação assíncrona no PostgreSQL
+
+A replicação assíncrona no PostgreSQL permite que réplicas (read replicas) recebam atualizações do banco primário sem bloquear as transações, otimizando leituras distribuídas, mas com possível atraso nos dados.
+
+**Como funciona:**
+- **Escrita no primário:** Transações (INSERT, UPDATE, DELETE) são gravadas no WAL (Write-Ahead Log) do banco primário.
+- **Envio ao réplica:** O WAL é enviado às réplicas via streaming replication, mas sem esperar confirmação.
+- **Aplicação na réplica:** As réplicas aplicam os registros do WAL de forma independente, o que pode causar um pequeno atraso (eventual consistency).
+- **Leituras nas réplicas:** As réplicas (hot standby) atendem consultas de leitura, aliviando o primário e escalando a performance de leitura.
+
+**Operações nos bastidores:**
+- **WAL Streaming:** O primário envia o WAL às réplicas via wal_sender (primário) e wal_receiver (réplica).
+- **Assíncrono:** O primário confirma a transação ao cliente sem aguardar as réplicas, reduzindo latência.
+- **Hot Standby:** Réplicas podem processar consultas de leitura enquanto aplicam o WAL, configurado com hot_standby = on.
+- **Atraso:** Dependendo da carga ou rede, réplicas podem estar alguns segundos atrás do primário.
+
+**Configuração típica (PostgreSQL):**
+```conf
+# postgresql.conf (primário)
+wal_level = replica
+max_wal_senders = 10
+hot_standby = on  # (nas réplicas)
+```
+
+**Trade-offs:**
+- **Vantagem:** Menor latência para escritas, alta escalabilidade para leituras.
+- **Desvantagem:** Réplicas podem ter dados ligeiramente desatualizados (atraso de milissegundos a segundos).
+
+> **Resumindo:**
+> A replicação assíncrona usa o WAL para enviar dados às réplicas sem bloquear o primário, ideal para escalar leituras, mas com consistência eventual.
+
 ### 3. **Balanceamento Inteligente (DbContextRouter)**
 - **Escrita:** Sempre tenta o primário, se falhar, usa o standby
 - **Leitura:** Distribui entre as réplicas, se todas falharem tenta o primário, se falhar, standby
