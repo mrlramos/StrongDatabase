@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configuração do DbContext para PostgreSQL
+// PostgreSQL DbContext configuration
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -22,7 +22,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Configuração do Health Check personalizado
+// Custom Health Check configuration
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheckService>("database_health_check");
 
@@ -39,7 +39,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Configuração do endpoint de health check com resposta JSON detalhada
+// Health check endpoint configuration with detailed JSON response
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResponseWriter = HealthResponseWriter.WriteResponse

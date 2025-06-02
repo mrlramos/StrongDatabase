@@ -7,32 +7,35 @@ namespace StrongDatabase.Api.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        public DbSet<Cliente> Clientes { get; set; }
-        public DbSet<Produto> Produtos { get; set; }
-        public DbSet<Compra> Compras { get; set; }
+        public DbSet<Customer> Customers { get; set; }
+        public DbSet<Product> Products { get; set; }
+        public DbSet<Order> Orders { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            modelBuilder.Entity<Cliente>(entity => {
+            
+            modelBuilder.Entity<Customer>(entity => {
                 entity.ToTable("cliente");
                 entity.Property(e => e.Id).HasColumnName("id");
-                entity.Property(e => e.Nome).HasColumnName("nome");
+                entity.Property(e => e.Name).HasColumnName("nome");
                 entity.Property(e => e.Email).HasColumnName("email");
             });
-            modelBuilder.Entity<Produto>(entity => {
+            
+            modelBuilder.Entity<Product>(entity => {
                 entity.ToTable("produto");
                 entity.Property(e => e.Id).HasColumnName("id");
-                entity.Property(e => e.Nome).HasColumnName("nome");
-                entity.Property(e => e.Preco).HasColumnName("preco");
+                entity.Property(e => e.Name).HasColumnName("nome");
+                entity.Property(e => e.Price).HasColumnName("preco");
             });
-            modelBuilder.Entity<Compra>(entity => {
+            
+            modelBuilder.Entity<Order>(entity => {
                 entity.ToTable("compra");
                 entity.Property(e => e.Id).HasColumnName("id");
-                entity.Property(e => e.ClienteId).HasColumnName("cliente_id");
-                entity.Property(e => e.ProdutoId).HasColumnName("produto_id");
-                entity.Property(e => e.Quantidade).HasColumnName("quantidade");
-                entity.Property(e => e.DataCompra).HasColumnName("data_compra");
+                entity.Property(e => e.CustomerId).HasColumnName("cliente_id");
+                entity.Property(e => e.ProductId).HasColumnName("produto_id");
+                entity.Property(e => e.Quantity).HasColumnName("quantidade");
+                entity.Property(e => e.OrderDate).HasColumnName("data_compra");
             });
         }
     }

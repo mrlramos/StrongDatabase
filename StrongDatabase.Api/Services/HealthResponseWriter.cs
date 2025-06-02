@@ -4,12 +4,12 @@ using System.Text.Json;
 namespace StrongDatabase.Api.Services
 {
     /// <summary>
-    /// Classe responsável por formatar a resposta do health check
+    /// Class responsible for formatting health check responses
     /// </summary>
     public static class HealthResponseWriter
     {
         /// <summary>
-        /// Escreve a resposta do health check em formato JSON detalhado
+        /// Writes the health check response in detailed JSON format
         /// </summary>
         public static async Task WriteResponse(HttpContext context, HealthReport report)
         {

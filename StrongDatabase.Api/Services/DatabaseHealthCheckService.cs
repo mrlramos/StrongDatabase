@@ -5,7 +5,7 @@ using System.Diagnostics;
 namespace StrongDatabase.Api.Services
 {
     /// <summary>
-    /// Serviço de health check personalizado que verifica cada servidor de banco de dados
+    /// Custom health check service that verifies each database server individually
     /// </summary>
     public class DatabaseHealthCheckService : IHealthCheck
     {
@@ -25,7 +25,7 @@ namespace StrongDatabase.Api.Services
             var overallHealthy = true;
             var stopwatch = Stopwatch.StartNew();
 
-            // Informações da API
+            // API information
             var uptime = DateTime.UtcNow - _startTime;
             healthData["api"] = new
             {
@@ -37,7 +37,7 @@ namespace StrongDatabase.Api.Services
                 timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
             };
 
-            // Verificar cada servidor de banco de dados
+            // Check each database server
             var databases = new Dictionary<string, string>
             {
                 ["primary"] = _configuration.GetConnectionString("DefaultConnection")!,
@@ -62,8 +62,8 @@ namespace StrongDatabase.Api.Services
 
             var status = overallHealthy ? HealthStatus.Healthy : HealthStatus.Degraded;
             var description = overallHealthy 
-                ? "Todos os serviços estão funcionando corretamente" 
-                : "Alguns serviços estão com problemas";
+                ? "All services are working correctly" 
+                : "Some services have issues";
 
             return new HealthCheckResult(status, description, data: healthData);
         }
@@ -77,7 +77,7 @@ namespace StrongDatabase.Api.Services
                 using var connection = new NpgsqlConnection(connectionString);
                 await connection.OpenAsync(cancellationToken);
                 
-                // Verificar se é possível executar uma query simples
+                // Check if we can execute a simple query
                 using var command = new NpgsqlCommand(@"
                     SELECT 
                         version(), 
@@ -116,7 +116,7 @@ namespace StrongDatabase.Api.Services
                     {
                         status = "unhealthy",
                         response_time_ms = stopwatch.ElapsedMilliseconds,
-                        error = "Não foi possível executar query de verificação",
+                        error = "Unable to execute verification query",
                         last_check = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
                     };
                 }
@@ -124,7 +124,7 @@ namespace StrongDatabase.Api.Services
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                _logger.LogWarning(ex, "Falha ao verificar saúde do banco {DatabaseName}", name);
+                _logger.LogWarning(ex, "Failed to check health of database {DatabaseName}", name);
                 
                 return new
                 {

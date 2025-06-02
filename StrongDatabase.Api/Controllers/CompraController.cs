@@ -1,64 +1,32 @@
-using StrongDatabase.Api.Data;
-using StrongDatabase.Api.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using StrongDatabase.Api.Models;
 using StrongDatabase.Api.Services;
 
 namespace StrongDatabase.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class CompraController : ControllerBase
+    public class OrderController : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly Repository _repo;
-        public CompraController(AppDbContext context, Repository repo)
+        private readonly Repository _repository;
+
+        public OrderController(Repository repository)
         {
-            _context = context;
-            _repo = repo;
+            _repository = repository;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Compra>>> GetAll()
+        public async Task<ActionResult<List<Order>>> GetOrders()
         {
-            return await _repo.GetComprasAsync();
-        }
-
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Compra>> GetById(int id)
-        {
-            var compra = await _context.Compras
-                .Include(c => c.Cliente)
-                .Include(c => c.Produto)
-                .FirstOrDefaultAsync(c => c.Id == id);
-            if (compra == null) return NotFound();
-            return compra;
+            var orders = await _repository.GetOrdersAsync();
+            return Ok(orders);
         }
 
         [HttpPost]
-        public async Task<ActionResult<Compra>> Create(Compra compra)
+        public async Task<ActionResult<Order>> CreateOrder(Order order)
         {
-            var result = await _repo.AddCompraAsync(compra);
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
-        }
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, Compra compra)
-        {
-            if (id != compra.Id) return BadRequest();
-            _context.Entry(compra).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-            return NoContent();
-        }
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var compra = await _context.Compras.FindAsync(id);
-            if (compra == null) return NotFound();
-            _context.Compras.Remove(compra);
-            await _context.SaveChangesAsync();
-            return NoContent();
+            var createdOrder = await _repository.AddOrderAsync(order);
+            return CreatedAtAction(nameof(GetOrders), new { id = createdOrder.Id }, createdOrder);
         }
     }
 } 

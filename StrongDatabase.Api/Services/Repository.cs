@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace StrongDatabase.Api.Services
 {
     /// <summary>
-    /// Repositório central que faz o roteamento inteligente de operações
+    /// Central repository that performs intelligent routing of operations
     /// </summary>
     public class Repository
     {
@@ -15,39 +15,39 @@ namespace StrongDatabase.Api.Services
             _router = router;
         }
 
-        // Métodos de leitura usam as réplicas
-        public async Task<List<Cliente>> GetClientesAsync() =>
-            await _router.GetReadContext().Clientes.AsNoTracking().ToListAsync();
-        public async Task<List<Produto>> GetProdutosAsync() =>
-            await _router.GetReadContext().Produtos.AsNoTracking().ToListAsync();
-        public async Task<List<Compra>> GetComprasAsync() =>
-            await _router.GetReadContext().Compras
-                .Include(c => c.Cliente)
-                .Include(c => c.Produto)
+        // Read methods use replicas
+        public async Task<List<Customer>> GetCustomersAsync() =>
+            await _router.GetReadContext().Customers.AsNoTracking().ToListAsync();
+        public async Task<List<Product>> GetProductsAsync() =>
+            await _router.GetReadContext().Products.AsNoTracking().ToListAsync();
+        public async Task<List<Order>> GetOrdersAsync() =>
+            await _router.GetReadContext().Orders
+                .Include(o => o.Customer)
+                .Include(o => o.Product)
                 .AsNoTracking().ToListAsync();
 
-        // Métodos de escrita usam o primário
-        public async Task<Cliente> AddClienteAsync(Cliente cliente)
+        // Write methods use primary
+        public async Task<Customer> AddCustomerAsync(Customer customer)
         {
             using var ctx = _router.GetWriteContext();
-            ctx.Clientes.Add(cliente);
+            ctx.Customers.Add(customer);
             await ctx.SaveChangesAsync();
-            return cliente;
+            return customer;
         }
-        public async Task<Produto> AddProdutoAsync(Produto produto)
+        public async Task<Product> AddProductAsync(Product product)
         {
             using var ctx = _router.GetWriteContext();
-            ctx.Produtos.Add(produto);
+            ctx.Products.Add(product);
             await ctx.SaveChangesAsync();
-            return produto;
+            return product;
         }
-        public async Task<Compra> AddCompraAsync(Compra compra)
+        public async Task<Order> AddOrderAsync(Order order)
         {
             using var ctx = _router.GetWriteContext();
-            ctx.Compras.Add(compra);
+            ctx.Orders.Add(order);
             await ctx.SaveChangesAsync();
-            return compra;
+            return order;
         }
-        // Métodos de update/delete podem ser implementados de forma similar
+        // Update/delete methods can be implemented similarly
     }
 } 

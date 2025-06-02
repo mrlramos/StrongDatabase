@@ -6,7 +6,7 @@ using System.Reflection;
 namespace StrongDatabase.Api.Controllers
 {
     /// <summary>
-    /// Controller para endpoints de monitoramento e health check
+    /// Controller for monitoring and health check endpoints
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
@@ -22,9 +22,9 @@ namespace StrongDatabase.Api.Controllers
         }
 
         /// <summary>
-        /// Endpoint de health check detalhado
+        /// Detailed health check endpoint
         /// </summary>
-        /// <returns>Status detalhado de todos os serviços</returns>
+        /// <returns>Detailed status of all services</returns>
         [HttpGet]
         [ProducesResponseType(200)]
         [ProducesResponseType(503)]
@@ -58,21 +58,21 @@ namespace StrongDatabase.Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao executar health check");
+                _logger.LogError(ex, "Error executing health check");
                 return StatusCode(503, new
                 {
                     status = "unhealthy",
                     timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                    error = "Falha interna no health check",
+                    error = "Internal health check failure",
                     details = ex.Message
                 });
             }
         }
 
         /// <summary>
-        /// Endpoint simplificado para verificação rápida
+        /// Simplified endpoint for quick verification
         /// </summary>
-        /// <returns>Status simples da API</returns>
+        /// <returns>Simple API status</returns>
         [HttpGet("simple")]
         [ProducesResponseType(200)]
         public IActionResult GetSimpleHealth()
@@ -82,14 +82,14 @@ namespace StrongDatabase.Api.Controllers
                 status = "healthy",
                 timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                 version = GetApiVersion(),
-                message = "API está funcionando corretamente"
+                message = "API is working correctly"
             });
         }
 
         /// <summary>
-        /// Informações sobre a versão da API
+        /// API version information
         /// </summary>
-        /// <returns>Informações de versão e build</returns>
+        /// <returns>Version and build information</returns>
         [HttpGet("version")]
         [ProducesResponseType(200)]
         public IActionResult GetVersion()
@@ -127,7 +127,7 @@ namespace StrongDatabase.Api.Controllers
                     return buildDate;
                 }
                 
-                // Fallback: usar data de criação do arquivo
+                // Fallback: use file creation date
                 var location = assembly.Location;
                 if (!string.IsNullOrEmpty(location) && System.IO.File.Exists(location))
                 {
@@ -136,7 +136,7 @@ namespace StrongDatabase.Api.Controllers
             }
             catch
             {
-                // Ignorar erros e retornar null
+                // Ignore errors and return null
             }
             
             return null;

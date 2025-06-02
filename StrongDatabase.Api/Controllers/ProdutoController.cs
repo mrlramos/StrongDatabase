@@ -1,61 +1,32 @@
-using StrongDatabase.Api.Data;
-using StrongDatabase.Api.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using StrongDatabase.Api.Models;
 using StrongDatabase.Api.Services;
 
 namespace StrongDatabase.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ProdutoController : ControllerBase
+    public class ProductController : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly Repository _repo;
-        public ProdutoController(AppDbContext context, Repository repo)
+        private readonly Repository _repository;
+
+        public ProductController(Repository repository)
         {
-            _context = context;
-            _repo = repo;
+            _repository = repository;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Produto>>> GetAll()
+        public async Task<ActionResult<List<Product>>> GetProducts()
         {
-            return await _repo.GetProdutosAsync();
-        }
-
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Produto>> GetById(int id)
-        {
-            var produto = await _context.Produtos.FindAsync(id);
-            if (produto == null) return NotFound();
-            return produto;
+            var products = await _repository.GetProductsAsync();
+            return Ok(products);
         }
 
         [HttpPost]
-        public async Task<ActionResult<Produto>> Create(Produto produto)
+        public async Task<ActionResult<Product>> CreateProduct(Product product)
         {
-            var result = await _repo.AddProdutoAsync(produto);
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
-        }
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, Produto produto)
-        {
-            if (id != produto.Id) return BadRequest();
-            _context.Entry(produto).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-            return NoContent();
-        }
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var produto = await _context.Produtos.FindAsync(id);
-            if (produto == null) return NotFound();
-            _context.Produtos.Remove(produto);
-            await _context.SaveChangesAsync();
-            return NoContent();
+            var createdProduct = await _repository.AddProductAsync(product);
+            return CreatedAtAction(nameof(GetProducts), new { id = createdProduct.Id }, createdProduct);
         }
     }
 } 

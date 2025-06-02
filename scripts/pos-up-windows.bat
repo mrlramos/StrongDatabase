@@ -1,27 +1,41 @@
 @echo off
-REM Script para ajustar replicação após docker-compose up
+echo ========================================
+echo StrongDatabase - Post-Up Configuration
+echo ========================================
+echo.
+echo This script configures replication after initial startup
+echo.
 
-REM Aguarda o primary-db subir
-:waitloop
-for /f "tokens=1" %%i in ('docker ps --filter "name=primary-db" --filter "status=running" --format "{{.ID}}"') do set CONTAINER=%%i
-if not defined CONTAINER (
-    echo Aguardando o primary-db iniciar...
-    timeout /t 2 >nul
-    goto waitloop
+echo [1/4] Copying custom pg_hba.conf to primary database...
+docker cp ./docker/primary/pg_hba.conf primary-db:/var/lib/postgresql/data/pg_hba.conf
+if %errorlevel% neq 0 (
+    echo ERROR: Failed to copy pg_hba.conf
+    pause
+    exit /b 1
 )
 
-REM Copia o pg_hba.conf customizado (caminho absoluto)
-copy /Y "%~dp0..\docker\primary\pg_hba.conf" "%~dp0pg_hba.conf"
+echo [2/4] Reloading PostgreSQL configuration...
+docker exec primary-db psql -U primary_user -d strongdatabase_primary -c "SELECT pg_reload_conf();"
+if %errorlevel% neq 0 (
+    echo ERROR: Failed to reload configuration
+    pause
+    exit /b 1
+)
 
-docker cp "%~dp0pg_hba.conf" primary-db:/var/lib/postgresql/data/pg_hba.conf
-
-del "%~dp0pg_hba.conf"
-
-REM Reinicia o primary-db para aplicar o novo pg_hba.conf
-docker restart primary-db
-
-REM Reinicia as réplicas e standby para tentarem novamente a replicação
+echo [3/4] Restarting replica and standby containers...
 docker-compose restart standby-db replica1-db replica2-db
+if %errorlevel% neq 0 (
+    echo ERROR: Failed to restart containers
+    pause
+    exit /b 1
+)
 
-echo Ambiente de replicação ajustado com sucesso!
+echo [4/4] Waiting for containers to stabilize...
+timeout /t 10 /nobreak > nul
+
+echo.
+echo ========================================
+echo Configuration completed successfully!
+echo All databases should now be replicating properly.
+echo ========================================
 pause 
