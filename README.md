@@ -352,33 +352,6 @@ curl -X POST http://localhost:5000/api/customer -H "Content-Type: application/js
 
 ---
 
-## How to Clean the Project
-
-To keep the project clean and without unnecessary files, remove the following folders whenever you want:
-
-- `StrongDatabase.Api/bin/`
-- `StrongDatabase.Api/obj/`
-- `.vs/` (Visual Studio cache, may be in use — close Visual Studio to delete everything)
-
-These folders are automatically generated during build and can be deleted without risk. The command for Windows PowerShell is:
-
-```powershell
-Remove-Item -Recurse -Force .\StrongDatabase.Api\bin
-Remove-Item -Recurse -Force .\StrongDatabase.Api\obj
-Remove-Item -Recurse -Force .\.vs
-```
-
-On Linux/Mac:
-```bash
-rm -rf StrongDatabase.Api/bin StrongDatabase.Api/obj .vs
-```
-
-> **Tip:** Before pushing to Git, always clean the project to avoid unnecessary files in the repository!
-
-These practices help keep the repository lean and organized.
-
----
-
 ## Starting the Environment from Scratch (after cleaning everything in Docker)
 
 Whenever you clean all containers, volumes, and images in Docker Desktop, follow this flow to ensure replication works:
