@@ -1,13 +1,14 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using StrongDatabase.Api.Data;
 using StrongDatabase.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configuração do DbContext para PostgreSQL
+// PostgreSQL DbContext configuration
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -21,7 +22,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Configuração do Health Check personalizado
+// Custom Health Check configuration
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheckService>("database_health_check");
 
@@ -38,37 +39,10 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Configuração do endpoint de health check com resposta JSON detalhada
+// Health check endpoint configuration with detailed JSON response
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
-    ResponseWriter = async (context, report) =>
-    {
-        context.Response.ContentType = "application/json; charset=utf-8";
-
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-
-        var healthReport = new
-        {
-            status = report.Status.ToString().ToLower(),
-            totalDuration = report.TotalDuration.TotalMilliseconds,
-            results = report.Entries.ToDictionary(
-                entry => entry.Key,
-                entry => new
-                {
-                    status = entry.Value.Status.ToString().ToLower(),
-                    description = entry.Value.Description,
-                    duration = entry.Value.Duration.TotalMilliseconds,
-                    data = entry.Value.Data
-                }
-            )
-        };
-
-        await context.Response.WriteAsync(JsonSerializer.Serialize(healthReport, options));
-    }
+    ResponseWriter = HealthResponseWriter.WriteResponse
 });
 
 app.Run();

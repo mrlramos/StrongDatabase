@@ -4,9 +4,9 @@ using StrongDatabase.Api.Models;
 namespace StrongDatabase.Api.Data
 {
     /// <summary>
-    /// Serviço responsável por fornecer o DbContext conectado ao banco correto
-    /// - Escrita: sempre no primário
-    /// - Leitura: tenta as réplicas, fallback para primário
+    /// Service responsible for providing the DbContext connected to the correct database
+    /// - Write: always to primary
+    /// - Read: tries replicas, fallback to primary
     /// </summary>
     public class DbContextRouter
     {
@@ -31,13 +31,13 @@ namespace StrongDatabase.Api.Data
         }
 
         /// <summary>
-        /// Obtém um contexto para operações de escrita (sempre primário)
+        /// Gets a context for write operations (always primary)
         /// </summary>
         public AppDbContext GetWriteContext()
         {
             try
             {
-                _logger.LogInformation("[LoadBalancer] Usando banco primário para escrita");
+                _logger.LogInformation("[LoadBalancer] Using primary database for write operations");
                 var options = new DbContextOptionsBuilder<AppDbContext>()
                     .UseNpgsql(_primary)
                     .Options;
@@ -48,7 +48,7 @@ namespace StrongDatabase.Api.Data
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "[Failover] Primário indisponível para escrita, redirecionando para standby!");
+                _logger.LogWarning(ex, "[Failover] Primary unavailable for write operations, redirecting to standby!");
                 var options = new DbContextOptionsBuilder<AppDbContext>()
                     .UseNpgsql(_standby)
                     .Options;
@@ -60,7 +60,7 @@ namespace StrongDatabase.Api.Data
         }
 
         /// <summary>
-        /// Obtém um contexto para operações de leitura (balanceia entre réplicas, fallback para primário)
+        /// Gets a context for read operations (load balances between replicas, fallback to primary)
         /// </summary>
         public AppDbContext GetReadContext()
         {
@@ -76,18 +76,18 @@ namespace StrongDatabase.Api.Data
                     ctx.Database.OpenConnection();
                     ctx.Database.CloseConnection();
                     _replicaIndex = (idx + 1) % _replicas.Length;
-                    _logger.LogInformation($"[LoadBalancer] Usando réplica {idx + 1} para leitura");
+                    _logger.LogInformation($"[LoadBalancer] Using replica {idx + 1} for read operations");
                     return ctx;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, $"Falha ao conectar na réplica {idx + 1}, tentando próxima...");
+                    _logger.LogWarning(ex, $"Failed to connect to replica {idx + 1}, trying next...");
                 }
             }
-            // Fallback: primário
+            // Fallback: primary
             try
             {
-                _logger.LogWarning("[LoadBalancer] Todas as réplicas indisponíveis, tentando primário para leitura");
+                _logger.LogWarning("[LoadBalancer] All replicas unavailable, trying primary for read operations");
                 var fallbackOptions = new DbContextOptionsBuilder<AppDbContext>()
                     .UseNpgsql(_primary)
                     .Options;
@@ -98,7 +98,7 @@ namespace StrongDatabase.Api.Data
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "[Failover] Primário também indisponível para leitura, redirecionando para standby!");
+                _logger.LogWarning(ex, "[Failover] Primary also unavailable for read operations, redirecting to standby!");
                 var standbyOptions = new DbContextOptionsBuilder<AppDbContext>()
                     .UseNpgsql(_standby)
                     .Options;

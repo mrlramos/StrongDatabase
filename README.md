@@ -1,78 +1,78 @@
 # StrongDatabase
 
-Projeto didático e moderno demonstrando arquitetura distribuída com .NET 8, PostgreSQL e Docker Compose, com replicação real, failover, e balanceamento.
+Modern educational project demonstrating distributed architecture with .NET 8, PostgreSQL, and Docker Compose, featuring real replication, failover, and load balancing.
 
 ---
 
-## Tecnologias Utilizadas
+## Technologies Used
 - **.NET 8 (ASP.NET Core Web API)**
 - **PostgreSQL 16** (Primary, Standby, Replica1, Replica2)
 - **Docker Compose**
 
 ---
 
-## Estrutura de Pastas
+## Project Structure
 ```
 StrongDatabase/
 │
-├── StrongDatabase.Api/         # Código-fonte da aplicação .NET
-├── docker/                       # Configurações e scripts dos bancos
-│   ├── primary/                  # Config do banco primário
-│   ├── standby/                  # Config do standby (síncrono)
-│   ├── replica1/                 # Config da réplica 1 (assíncrona)
-│   └── replica2/                 # Config da réplica 2 (assíncrona)
-├── scripts/                      # Scripts SQL de criação dos bancos e dados
-├── docker-compose.yml            # Orquestração dos containers
-└── README.md                     # Documentação
+├── StrongDatabase.Api/         # .NET application source code
+├── docker/                     # Database configurations and scripts
+│   ├── primary/                # Primary database config
+│   ├── standby/                # Standby config (synchronous)
+│   ├── replica1/               # Replica 1 config (asynchronous)
+│   └── replica2/               # Replica 2 config (asynchronous)
+├── scripts/                    # SQL scripts for database creation and data
+├── docker-compose.yml          # Container orchestration
+└── README.md                   # Documentation
 ```
 
 ---
 
-## Objetivo do Projeto
-- Demonstrar **arquitetura de bancos distribuídos** com replicação real (síncrona e assíncrona)
-- **Failover automático** e seguro (zero perda de dados)
-- **Leitura distribuída** entre réplicas
-- **Balanceamento inteligente** de conexões na aplicação
-- **Health checks** e monitoramento
-- **Exemplo prático** de integração .NET + PostgreSQL + Docker Compose
+## Project Objectives
+- Demonstrate **distributed database architecture** with real replication (synchronous and asynchronous)
+- **Automatic and secure failover** (zero data loss)
+- **Distributed reading** across replicas
+- **Intelligent load balancing** of connections in the application
+- **Health checks** and monitoring
+- **Practical example** of .NET + PostgreSQL + Docker Compose integration
 
 ---
 
-## Arquitetura e Fluxo
+## Architecture and Flow
 
-### 1. **Containers e Funções**
-- **primary-db**: Banco principal (escrita e leitura de emergência)
-- **standby-db**: Standby síncrono (failover, nunca perde dados)
-- **replica1-db/replica2-db**: Réplicas assíncronas (leitura distribuída)
-- **strongdatabase-api**: API .NET 8, faz balanceamento e failover automático
+### 1. **Containers and Functions**
+- **primary-db**: Main database (write and emergency read)
+- **standby-db**: Synchronous standby (failover, never loses data)
+- **replica1-db/replica2-db**: Asynchronous replicas (distributed reading)
+- **strongdatabase-api**: .NET 8 API, performs automatic load balancing and failover
 
-### 2. **Replicação e Failover**
-- O **primário** replica via WAL para standby (síncrono) e réplicas (assíncronas)
-- O **standby** só confirma a escrita quando recebe o dado (garante zero perda)
-- As **réplicas** recebem as alterações de forma assíncrona (podem atrasar alguns segundos)
-- Se o primário cair, a aplicação redireciona escritas para o standby
-- Se todas as réplicas e o primário caírem, leituras vão para o standby
+### 2. **Replication and Failover**
+- The **primary** replicates via WAL to standby (synchronous) and replicas (asynchronous)
+- The **standby** only confirms write when it receives the data (guarantees zero loss)
+- The **replicas** receive changes asynchronously (may lag a few seconds)
+- If primary fails, application redirects writes to standby
+- If all replicas and primary fail, reads go to standby
 
-#### 🔎 Como funciona a sincronização síncrona no PostgreSQL
+#### 🔎 How Synchronous Synchronization Works in PostgreSQL
 
-A sincronização síncrona em bancos de dados, como no PostgreSQL, garante que os dados escritos no banco primário sejam replicados para o banco standby antes de confirmar a transação ao cliente. Isso assegura zero perda de dados em caso de falha do primário.
+Synchronous synchronization in databases like PostgreSQL ensures that data written to the primary database is replicated to the standby database before confirming the transaction to the client. This guarantees zero data loss in case of primary failure.
 
-**Como funciona:**
-- **Escrita no primário:** Quando uma transação (INSERT, UPDATE, DELETE) é executada no banco primário, os dados são registrados no WAL (Write-Ahead Log), um log de transações.
-- **Envio ao standby:** O WAL é enviado ao banco standby em tempo real via streaming replication.
-- **Confirmação síncrona:** O primário aguarda a confirmação do standby de que os dados do WAL foram recebidos e aplicados (ou pelo menos gravados em disco, dependendo da configuração).
-- **Commit no primário:** Somente após a confirmação do standby, o primário confirma a transação ao cliente.
-- **Failover seguro:** Se o primário falhar, o standby já tem todos os dados confirmados, permitindo assumir como novo primário sem perda.
+**How it works:**
+- **Write to primary:** When a transaction (INSERT, UPDATE, DELETE) is executed on the primary database, data is recorded in the WAL (Write-Ahead Log), a transaction log.
+- **Send to standby:** The WAL is sent to the standby database in real-time via streaming replication.
+- **Synchronous confirmation:** The primary waits for confirmation from the standby that WAL data has been received and applied (or at least written to disk, depending on configuration).
+- **Commit on primary:** Only after standby confirmation does the primary confirm the transaction to the client.
+- **Safe failover:** If the primary fails, the standby already has all confirmed data, allowing it to take over as new primary without loss.
 
-**Operações nos bastidores:**
-- **WAL Streaming:** O primário envia os registros do WAL para o standby por uma conexão TCP (via wal_sender no primário e wal_receiver no standby).
-- **Synchronous Commit:** Configurado com `synchronous_commit = on` e `synchronous_standby_names` no postgresql.conf do primário, especificando o standby.
-- **Handshaking:** O standby confirma a recepção/aplicação do WAL, e o primário aguarda essa resposta antes de prosseguir.
-- **Latência:** Como o primário espera a confirmação, há um pequeno aumento na latência das transações, mas isso garante consistência.
+**Behind-the-scenes operations:**
+- **WAL Streaming:** Primary sends WAL records to standby via TCP connection (via wal_sender on primary and wal_receiver on standby).
+- **Synchronous Commit:** Configured with `synchronous_commit = on` and `synchronous_standby_names` in primary's postgresql.conf, specifying the standby.
+- **Handshaking:** Standby confirms WAL reception/application, and primary waits for this response before proceeding.
+- **Latency:** Since primary waits for confirmation, there's a small increase in transaction latency, but this guarantees consistency.
 
-**Configuração típica (PostgreSQL):**
+**Typical configuration (PostgreSQL):**
 ```conf
-# postgresql.conf (primário)
+# postgresql.conf (primary)
 wal_level = replica
 synchronous_commit = on
 synchronous_standby_names = 'standby-db'
@@ -80,66 +80,66 @@ max_wal_senders = 10
 ```
 
 **Trade-offs:**
-- **Vantagem:** Zero perda de dados, ideal para sistemas críticos.
-- **Desvantagem:** Maior latência, pois o primário aguarda o standby.
+- **Advantage:** Zero data loss, ideal for critical systems.
+- **Disadvantage:** Higher latency, as primary waits for standby.
 
-> **Resumindo:**
-> A sincronização síncrona usa o WAL para replicar dados em tempo real, aguardando confirmação do standby antes de commit, garantindo consistência total.
+> **Summary:**
+> Synchronous synchronization uses WAL to replicate data in real-time, waiting for standby confirmation before commit, guaranteeing total consistency.
 
-#### 🔎 Como funciona a replicação assíncrona no PostgreSQL
+#### 🔎 How Asynchronous Replication Works in PostgreSQL
 
-A replicação assíncrona no PostgreSQL permite que réplicas (read replicas) recebam atualizações do banco primário sem bloquear as transações, otimizando leituras distribuídas, mas com possível atraso nos dados.
+Asynchronous replication in PostgreSQL allows replicas (read replicas) to receive updates from the primary database without blocking transactions, optimizing distributed reads but with possible data lag.
 
-**Como funciona:**
-- **Escrita no primário:** Transações (INSERT, UPDATE, DELETE) são gravadas no WAL (Write-Ahead Log) do banco primário.
-- **Envio ao réplica:** O WAL é enviado às réplicas via streaming replication, mas sem esperar confirmação.
-- **Aplicação na réplica:** As réplicas aplicam os registros do WAL de forma independente, o que pode causar um pequeno atraso (eventual consistency).
-- **Leituras nas réplicas:** As réplicas (hot standby) atendem consultas de leitura, aliviando o primário e escalando a performance de leitura.
+**How it works:**
+- **Write to primary:** Transactions (INSERT, UPDATE, DELETE) are written to the primary database's WAL (Write-Ahead Log).
+- **Send to replica:** WAL is sent to replicas via streaming replication, but without waiting for confirmation.
+- **Apply on replica:** Replicas apply WAL records independently, which may cause a small delay (eventual consistency).
+- **Reads on replicas:** Replicas (hot standby) serve read queries, relieving the primary and scaling read performance.
 
-**Operações nos bastidores:**
-- **WAL Streaming:** O primário envia o WAL às réplicas via wal_sender (primário) e wal_receiver (réplica).
-- **Assíncrono:** O primário confirma a transação ao cliente sem aguardar as réplicas, reduzindo latência.
-- **Hot Standby:** Réplicas podem processar consultas de leitura enquanto aplicam o WAL, configurado com hot_standby = on.
-- **Atraso:** Dependendo da carga ou rede, réplicas podem estar alguns segundos atrás do primário.
+**Behind-the-scenes operations:**
+- **WAL Streaming:** Primary sends WAL to replicas via wal_sender (primary) and wal_receiver (replica).
+- **Asynchronous:** Primary confirms transaction to client without waiting for replicas, reducing latency.
+- **Hot Standby:** Replicas can process read queries while applying WAL, configured with hot_standby = on.
+- **Lag:** Depending on load or network, replicas may be a few seconds behind primary.
 
-**Configuração típica (PostgreSQL):**
+**Typical configuration (PostgreSQL):**
 ```conf
-# postgresql.conf (primário)
+# postgresql.conf (primary)
 wal_level = replica
 max_wal_senders = 10
-hot_standby = on  # (nas réplicas)
+hot_standby = on  # (on replicas)
 ```
 
 **Trade-offs:**
-- **Vantagem:** Menor latência para escritas, alta escalabilidade para leituras.
-- **Desvantagem:** Réplicas podem ter dados ligeiramente desatualizados (atraso de milissegundos a segundos).
+- **Advantage:** Lower write latency, high read scalability.
+- **Disadvantage:** Replicas may have slightly outdated data (milliseconds to seconds lag).
 
-> **Resumindo:**
-> A replicação assíncrona usa o WAL para enviar dados às réplicas sem bloquear o primário, ideal para escalar leituras, mas com consistência eventual.
+> **Summary:**
+> Asynchronous replication uses WAL to send data to replicas without blocking the primary, ideal for scaling reads but with eventual consistency.
 
-### 3. **Balanceamento Inteligente (DbContextRouter)**
-- **Escrita:** Sempre tenta o primário, se falhar, usa o standby
-- **Leitura:** Distribui entre as réplicas, se todas falharem tenta o primário, se falhar, standby
-- **Logs informativos** mostram cada fallback e decisão
+### 3. **Intelligent Load Balancing (DbContextRouter)**
+- **Write:** Always tries primary, if it fails, uses standby
+- **Read:** Distributes among replicas, if all fail tries primary, if it fails, standby
+- **Informative logs** show each fallback and decision
 
 ### 4. **Health Checks**
-- Endpoint `/health` monitora API e conexão com banco
-- Pode ser usado por orquestradores ou load balancers externos
+- `/health` endpoint monitors API and database connections
+- Can be used by external orchestrators or load balancers
 
 ---
 
-## Modelo de Dados
+## Data Model
 
-### Tabelas
-- **Cliente**: `id`, `nome`, `email`
-- **Produto**: `id`, `nome`, `preco`
-- **Compra**: `id`, `cliente_id`, `produto_id`, `quantidade`, `data_compra`
+### Tables
+- **Customer**: `id`, `name`, `email`
+- **Product**: `id`, `name`, `price`
+- **Order**: `id`, `customer_id`, `product_id`, `quantity`, `order_date`
 
-### Exemplo de Dados
+### Sample Data
 ```sql
 INSERT INTO cliente (nome, email) VALUES
-  ('João Silva', 'joao@email.com'),
-  ('Maria Souza', 'maria@email.com');
+  ('John Silva', 'john@email.com'),
+  ('Mary Souza', 'mary@email.com');
 INSERT INTO produto (nome, preco) VALUES
   ('Notebook', 3500.00),
   ('Mouse', 80.00);
@@ -150,36 +150,27 @@ INSERT INTO compra (cliente_id, produto_id, quantidade) VALUES
 
 ---
 
-## Endpoints Disponíveis
+## Available Endpoints
 
-### Clientes (`/api/cliente`)
-- `GET /api/cliente` — Lista todos os clientes
-- `GET /api/cliente/{id}` — Busca cliente por ID
-- `POST /api/cliente` — Cria novo cliente
-- `PUT /api/cliente/{id}` — Atualiza cliente
-- `DELETE /api/cliente/{id}` — Remove cliente
+### Customers (`/api/customer`)
+- `GET /api/customer` — List all customers
+- `POST /api/customer` — Create new customer
 
-### Produtos (`/api/produto`)
-- `GET /api/produto` — Lista todos os produtos
-- `GET /api/produto/{id}` — Busca produto por ID
-- `POST /api/produto` — Cria novo produto
-- `PUT /api/produto/{id}` — Atualiza produto
-- `DELETE /api/produto/{id}` — Remove produto
+### Products (`/api/product`)
+- `GET /api/product` — List all products
+- `POST /api/product` — Create new product
 
-### Compras (`/api/compra`)
-- `GET /api/compra` — Lista todas as compras
-- `GET /api/compra/{id}` — Busca compra por ID (inclui cliente e produto)
-- `POST /api/compra` — Cria nova compra
-- `PUT /api/compra/{id}` — Atualiza compra
-- `DELETE /api/compra/{id}` — Remove compra
+### Orders (`/api/order`)
+- `GET /api/order` — List all orders (includes customer and product)
+- `POST /api/order` — Create new order
 
-### Health Check e Monitoramento
-- `GET /health` — Health check detalhado com status de todos os servidores de banco
-- `GET /api/health` — Health check via controller com informações organizadas
-- `GET /api/health/simple` — Verificação rápida do status da API
-- `GET /api/health/version` — Informações detalhadas sobre versão e ambiente
+### Health Check and Monitoring
+- `GET /health` — Detailed health check with status of all database servers
+- `GET /api/health` — Health check via controller with organized information
+- `GET /api/health/simple` — Quick API status verification
+- `GET /api/health/version` — Detailed version and environment information
 
-#### Exemplo de Resposta do Health Check (`/health`)
+#### Health Check Response Example (`/health`)
 ```json
 {
   "status": "healthy",
@@ -187,7 +178,7 @@ INSERT INTO compra (cliente_id, produto_id, quantidade) VALUES
   "results": {
     "database_health_check": {
       "status": "healthy",
-      "description": "Todos os serviços estão funcionando corretamente",
+      "description": "All services are working correctly",
       "duration": "44.15ms",
       "data": {
         "api": {
@@ -211,8 +202,8 @@ INSERT INTO compra (cliente_id, produto_id, quantidade) VALUES
         "standby": {
           "status": "healthy",
           "responseTimeMs": 15,
-          "databaseName": "strongdatabase_standby",
-          "user": "standby_user",
+          "databaseName": "strongdatabase_primary",
+          "user": "primary_user",
           "serverAddress": "172.18.0.3",
           "serverPort": 5432,
           "postgresqlVersion": "16.1",
@@ -221,8 +212,8 @@ INSERT INTO compra (cliente_id, produto_id, quantidade) VALUES
         "replica1": {
           "status": "healthy",
           "responseTimeMs": 8,
-          "databaseName": "strongdatabase_replica1",
-          "user": "replica1_user",
+          "databaseName": "strongdatabase_primary",
+          "user": "primary_user",
           "serverAddress": "172.18.0.4",
           "serverPort": 5432,
           "postgresqlVersion": "16.1",
@@ -231,8 +222,8 @@ INSERT INTO compra (cliente_id, produto_id, quantidade) VALUES
         "replica2": {
           "status": "healthy",
           "responseTimeMs": 10,
-          "databaseName": "strongdatabase_replica2",
-          "user": "replica2_user",
+          "databaseName": "strongdatabase_primary",
+          "user": "primary_user",
           "serverAddress": "172.18.0.5",
           "serverPort": 5432,
           "postgresqlVersion": "16.1",
@@ -247,21 +238,21 @@ INSERT INTO compra (cliente_id, produto_id, quantidade) VALUES
 
 ---
 
-## Como Rodar o Projeto
+## How to Run the Project
 
-1. **Suba os containers:**
+1. **Start the containers:**
    ```sh
    docker-compose up --build -d
    ```
-2. **Acesse a API:**
-   - [http://localhost:5000/swagger](http://localhost:5000/swagger) (interface interativa)
-   - Ou use os endpoints REST diretamente
+2. **Access the API:**
+   - [http://localhost:5000/swagger](http://localhost:5000/swagger) (interactive interface)
+   - Or use REST endpoints directly
 
 ---
 
-## Detalhes Técnicos e Scripts
+## Technical Details and Scripts
 
-### Configuração do Primário (`docker/primary/postgresql.conf`)
+### Primary Configuration (`docker/primary/postgresql.conf`)
 ```conf
 listen_addresses = '*'
 wal_level = replica
@@ -273,103 +264,103 @@ hot_standby = on
 synchronous_standby_names = 'standby-db'
 ```
 
-### Standby Síncrono (`docker/standby/standby-entrypoint.sh`)
-- Clona dados do primário ao iniciar
-- Conecta como standby síncrono
-- Só confirma escrita quando recebe o dado
+### Synchronous Standby (`docker/standby/standby-entrypoint.sh`)
+- Clones data from primary on startup
+- Connects as synchronous standby
+- Only confirms write when it receives the data
 
-### Réplicas Assíncronas (`docker/replica1/replica-entrypoint.sh`)
-- Clonam dados do primário ao iniciar
-- Operam como hot standby assíncrono
+### Asynchronous Replicas (`docker/replica1/replica-entrypoint.sh`)
+- Clone data from primary on startup
+- Operate as asynchronous hot standby
 
-### Orquestração Docker Compose
-- Cada banco expõe uma porta diferente (`5433`, `5434`, `5435`, `5436`)
-- API exposta em `5000`
-- Volumes montam scripts e configs customizados
-- Dependências garantem ordem de inicialização
+### Docker Compose Orchestration
+- Each database exposes a different port (`5433`, `5434`, `5435`, `5436`)
+- API exposed on `5000`
+- Volumes mount custom scripts and configs
+- Dependencies ensure initialization order
 
 ---
 
-## Fluxo de Balanceamento e Failover (Didático)
+## Load Balancing and Failover Flow (Educational)
 
-1. **Leitura**
-   - API tenta ler nas réplicas (round-robin)
-   - Se todas falharem, tenta o primário
-   - Se primário falhar, tenta o standby
-2. **Escrita**
-   - API sempre tenta o primário
-   - Se primário falhar, usa o standby
+1. **Read**
+   - API tries to read from replicas (round-robin)
+   - If all fail, tries primary
+   - If primary fails, tries standby
+2. **Write**
+   - API always tries primary
+   - If primary fails, uses standby
 3. **Failover**
-   - Se o primário cair, standby assume sem perda de dados
-   - Réplicas podem ficar alguns segundos atrás (eventual consistency)
+   - If primary goes down, standby takes over without data loss
+   - Replicas may lag a few seconds (eventual consistency)
 
 ---
 
-## Exemplos de Teste
+## Test Examples
 
-### Testar Health Check
+### Test Health Check
 ```sh
-# Health check detalhado (endpoint principal)
+# Detailed health check (main endpoint)
 curl http://localhost:5000/health
 
 # Health check via controller
 curl http://localhost:5000/api/health
 
-# Verificação rápida da API
+# Quick API verification
 curl http://localhost:5000/api/health/simple
 
-# Informações de versão
+# Version information
 curl http://localhost:5000/api/health/version
 ```
 
-### Listar Clientes
+### List Customers
 ```sh
-curl http://localhost:5000/api/cliente
+curl http://localhost:5000/api/customer
 ```
 
-### Criar Cliente
+### Create Customer
 ```sh
-curl -X POST http://localhost:5000/api/cliente -H "Content-Type: application/json" -d '{"nome":"Novo Cliente","email":"novo@email.com"}'
+curl -X POST http://localhost:5000/api/customer -H "Content-Type: application/json" -d '{"name":"New Customer","email":"new@email.com"}'
 ```
 
-### Simular Failover
-1. Pare o primário:
+### Simulate Failover
+1. Stop the primary:
    ```sh
    docker stop primary-db
    ```
-2. Teste o health check para ver o status dos servidores:
+2. Test health check to see server status:
    ```sh
    curl http://localhost:5000/health
    ```
-3. Faça uma escrita (POST): a API irá redirecionar para o standby automaticamente.
-4. Logs mostrarão o fallback.
+3. Make a write (POST): API will automatically redirect to standby.
+4. Logs will show the fallback.
 
 ---
 
-## Observações Didáticas
-- **Standby síncrono** garante zero perda de dados
-- **Read replicas** aumentam performance de leitura
-- **Balanceamento e failover** são automáticos e transparentes para o usuário
-- **Arquitetura pronta para produção** (com adaptações de segurança e monitoramento)
+## Educational Notes
+- **Synchronous standby** guarantees zero data loss
+- **Read replicas** increase read performance
+- **Load balancing and failover** are automatic and transparent to the user
+- **Production-ready architecture** (with security and monitoring adaptations)
 
 ---
 
-## Créditos e Referências
-- Projeto didático inspirado nas melhores práticas de arquitetura distribuída
-- Documentação oficial: [PostgreSQL Streaming Replication](https://www.postgresql.org/docs/current/warm-standby.html)
+## Credits and References
+- Educational project inspired by distributed architecture best practices
+- Official documentation: [PostgreSQL Streaming Replication](https://www.postgresql.org/docs/current/warm-standby.html)
 - [ASP.NET Core Docs](https://learn.microsoft.com/aspnet/core)
 
 ---
 
-## Como Limpar o Projeto
+## How to Clean the Project
 
-Para manter o projeto limpo e sem arquivos desnecessários, remova as seguintes pastas sempre que quiser:
+To keep the project clean and without unnecessary files, remove the following folders whenever you want:
 
 - `StrongDatabase.Api/bin/`
 - `StrongDatabase.Api/obj/`
-- `.vs/` (cache do Visual Studio, pode estar em uso — feche o Visual Studio para apagar tudo)
+- `.vs/` (Visual Studio cache, may be in use — close Visual Studio to delete everything)
 
-Essas pastas são geradas automaticamente durante o build e podem ser excluídas sem risco. O comando para Windows PowerShell é:
+These folders are automatically generated during build and can be deleted without risk. The command for Windows PowerShell is:
 
 ```powershell
 Remove-Item -Recurse -Force .\StrongDatabase.Api\bin
@@ -377,44 +368,44 @@ Remove-Item -Recurse -Force .\StrongDatabase.Api\obj
 Remove-Item -Recurse -Force .\.vs
 ```
 
-No Linux/Mac:
+On Linux/Mac:
 ```bash
 rm -rf StrongDatabase.Api/bin StrongDatabase.Api/obj .vs
 ```
 
-> **Dica:** Antes de subir para o Git, sempre limpe o projeto para evitar arquivos desnecessários no repositório!
+> **Tip:** Before pushing to Git, always clean the project to avoid unnecessary files in the repository!
 
-Essas práticas ajudam a manter o repositório enxuto e organizado.
+These practices help keep the repository lean and organized.
 
 ---
 
-## Subindo o ambiente do zero (após limpar tudo no Docker)
+## Starting the Environment from Scratch (after cleaning everything in Docker)
 
-Sempre que você limpar todos os containers, volumes e imagens no Docker Desktop, siga este fluxo para garantir que a replicação funcione:
+Whenever you clean all containers, volumes, and images in Docker Desktop, follow this flow to ensure replication works:
 
-1. Suba normalmente:
+1. Start normally:
    ```sh
    docker-compose up --build -d
    ```
-   (Espere todos os containers subirem. As réplicas e standby podem parar na primeira tentativa, isso é esperado.)
+   (Wait for all containers to start. Replicas and standby may stop on first attempt, this is expected.)
 
-2. Execute o script pós-up para ajustar a replicação:
-   - **No Windows:**
+2. Run the post-up script to adjust replication:
+   - **On Windows:**
      ```sh
      scripts\pos-up-windows.bat
      ```
-   - **No Linux/Mac:**
+   - **On Linux/Mac:**
      ```sh
      bash scripts/pos-up-linux.sh
      ```
 
-Esses scripts vão:
-- Copiar o `pg_hba.conf` customizado para dentro do primary-db
-- Reiniciar o primary-db
-- Reiniciar as réplicas e standby para garantir a replicação
+These scripts will:
+- Copy the custom `pg_hba.conf` into primary-db
+- Restart primary-db
+- Restart replicas and standby to ensure replication
 
-Pronto! O ambiente estará normalizado e funcional.
+Done! The environment will be normalized and functional.
 
 ---
 
-**Dúvidas, sugestões ou quer expandir? Fique à vontade para contribuir!** 
+**Questions, suggestions, or want to expand? Feel free to contribute!** 

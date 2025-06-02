@@ -1,23 +1,23 @@
--- Concede privilégios ao usuário já existente
+-- Grant privileges to the existing user
 GRANT ALL PRIVILEGES ON DATABASE strongdatabase_replica2 TO replica2_user;
 
 \c strongdatabase_replica2;
 
--- Tabela de Clientes
+-- Customer Table
 CREATE TABLE cliente (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE
 );
 
--- Tabela de Produtos
+-- Product Table
 CREATE TABLE produto (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
     preco NUMERIC(10,2) NOT NULL
 );
 
--- Tabela de Compras
+-- Order Table
 CREATE TABLE compra (
     id SERIAL PRIMARY KEY,
     cliente_id INTEGER NOT NULL REFERENCES cliente(id),
@@ -26,14 +26,14 @@ CREATE TABLE compra (
     data_compra TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
--- Dados de exemplo
+-- Sample data (will be replaced by replication from primary)
 INSERT INTO cliente (nome, email) VALUES
-  ('João Silva', 'joao@email.com'),
-  ('Maria Souza', 'maria@email.com');
+  ('John Silva', 'john@email.com'),
+  ('Mary Johnson', 'mary@email.com');
 
 INSERT INTO produto (nome, preco) VALUES
-  ('Notebook', 3500.00),
-  ('Mouse', 80.00);
+  ('Gaming Laptop', 2500.00),
+  ('Wireless Mouse', 75.00);
 
 INSERT INTO compra (cliente_id, produto_id, quantidade) VALUES
   (1, 1, 1),

@@ -1,19 +1,38 @@
 #!/bin/bash
-# Script para ajustar replicação após docker-compose up
 
-# Aguarda o primary-db subir
-until docker ps --filter "name=primary-db" --filter "status=running" | grep primary-db; do
-  echo "Aguardando o primary-db iniciar..."
-  sleep 2
-done
+echo "========================================"
+echo "StrongDatabase - Post-Up Configuration"
+echo "========================================"
+echo
+echo "This script configures replication after initial startup"
+echo
 
-# Copia o pg_hba.conf customizado
+echo "[1/4] Copying custom pg_hba.conf to primary database..."
 docker cp ./docker/primary/pg_hba.conf primary-db:/var/lib/postgresql/data/pg_hba.conf
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to copy pg_hba.conf"
+    exit 1
+fi
 
-# Reinicia o primary-db para aplicar o novo pg_hba.conf
-docker restart primary-db
+echo "[2/4] Reloading PostgreSQL configuration..."
+docker exec primary-db psql -U primary_user -d strongdatabase_primary -c "SELECT pg_reload_conf();"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to reload configuration"
+    exit 1
+fi
 
-# Reinicia as réplicas e standby para tentarem novamente a replicação
+echo "[3/4] Restarting replica and standby containers..."
 docker-compose restart standby-db replica1-db replica2-db
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to restart containers"
+    exit 1
+fi
 
-echo "Ambiente de replicação ajustado com sucesso!" 
+echo "[4/4] Waiting for containers to stabilize..."
+sleep 10
+
+echo
+echo "========================================"
+echo "Configuration completed successfully!"
+echo "All databases should now be replicating properly."
+echo "========================================" 
