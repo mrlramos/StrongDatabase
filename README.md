@@ -1,384 +1,302 @@
-# StrongDatabase
+# StrongDatabase 🚀
 
-Modern educational project demonstrating distributed architecture with .NET 8, PostgreSQL, and Docker Compose, featuring real replication, failover, and load balancing.
+Modern educational project demonstrating distributed PostgreSQL architecture with .NET 8, featuring real streaming replication, failover, and intelligent load balancing.
+
+## 🎯 **QUICK START (Zero to Running in 2 Commands!)**
+
+### ⚡ **SIMPLE METHOD THAT WORKS** ⚡
+
+#### 🐧 **For Linux/macOS:**
+```bash
+# 1️⃣ Deploy entire infrastructure
+docker-compose up --build -d
+
+# 2️⃣ Setup database replication
+./deployment/setup.sh
+```
+
+#### 🪟 **For Windows:**
+```cmd
+# 1️⃣ Deploy entire infrastructure  
+docker-compose up --build -d
+
+# 2️⃣ Setup database replication
+.\deployment\setup.bat
+```
+
+### 🎉 **IN ~3-5 MINUTES YOU'LL HAVE:**
+- ✅ **4 PostgreSQL databases** (Primary, Standby, Replica1, Replica2) with real streaming replication
+- ✅ **.NET 8 API** with intelligent routing and automatic load balancing
+- ✅ **ELK Stack complete** (Elasticsearch, Logstash, Kibana, Filebeat)
+- ✅ **Centralized logs** with automatic dashboards
+- ✅ **Detailed health checks** for entire infrastructure
+- ✅ **Sample data** loaded and ready for testing
+
+### 🌐 **AVAILABLE URLS AFTER DEPLOYMENT:**
+| Service | URL | Description |
+|---------|-----|-----------|
+| 🌐 **Main API** | http://localhost:5000 | REST API with all endpoints |
+| 📊 **Swagger/OpenAPI** | http://localhost:5000/swagger | Interactive API documentation |
+| 💚 **Health Check** | http://localhost:5000/health | Detailed status of entire infrastructure |
+| 📈 **Kibana** | http://localhost:5601 | Dashboards and log analysis |
+| 🔍 **Elasticsearch** | http://localhost:9200 | Search engine and log storage |
+
+### 🧪 **QUICK TESTS:**
+```bash
+# Test API working
+curl http://localhost:5000/api/customer
+
+# Check health of all services  
+curl http://localhost:5000/health
+
+# Create a new customer
+curl -X POST http://localhost:5000/api/customer \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test","email":"test@example.com"}'
+```
+
+### 🔧 **QUICK TROUBLESHOOTING:**
+
+#### ❌ **If something doesn't work:**
+```bash
+# 1. Check container status
+docker-compose ps
+
+# 2. View logs of specific service
+docker logs strongdatabase-api
+docker logs primary-db
+docker logs logstash
+
+# 3. Restart everything from scratch
+docker-compose down -v
+docker-compose up --build -d
+.\deployment\setup.bat  # or ./deployment/setup.sh
+```
+
+#### ⚠️ **Common Issues:**
+- **API doesn't start**: Wait ~30 seconds after `docker-compose up`
+- **Replicas don't work**: Run the setup script after containers are up
+- **Logstash fails**: Normal on first run, it restarts automatically
+- **Elasticsearch takes time**: Can take up to 1 minute to become "healthy"
 
 ---
 
-## Technologies Used
-- **.NET 8 (ASP.NET Core Web API)**
-- **PostgreSQL 16** (Primary, Standby, Replica1, Replica2)
-- **Docker Compose**
+## 🏗️ **Architecture Overview**
 
----
+### **Technologies Used**
+- **.NET 8** (ASP.NET Core Web API)
+- **PostgreSQL 16** with streaming replication
+- **Docker Compose** for orchestration
+- **ELK Stack** (Elasticsearch, Logstash, Kibana) for monitoring
+- **Filebeat** for log collection
 
-## Project Structure
+### **Project Structure**
 ```
 StrongDatabase/
 │
-├── StrongDatabase.Api/         # .NET application source code
-├── docker/                     # Database configurations and scripts
-│   ├── primary/                # Primary database config
-│   ├── standby/                # Standby config (synchronous)
-│   ├── replica1/               # Replica 1 config (asynchronous)
-│   └── replica2/               # Replica 2 config (asynchronous)
-├── scripts/                    # SQL scripts for database creation and data
-├── docker-compose.yml          # Container orchestration
-└── README.md                   # Documentation
+├── api/                        # .NET 8 API application
+│   └── StrongDatabase.Api/     # Main API project
+│
+├── database/                   # Database configurations
+│   ├── init-schema.sql         # Database schema and sample data
+│   ├── pg_hba.conf            # PostgreSQL authentication
+│   ├── postgres-primary.conf  # Primary database config
+│   ├── postgres-replica.conf  # Replica databases config
+│   └── setup-replica.sh       # Replication setup script
+│
+├── deployment/                 # Deployment scripts
+│   ├── setup.sh               # Linux/macOS deployment
+│   └── setup.bat              # Windows deployment
+│
+├── monitoring/                 # ELK Stack configuration
+│   ├── dashboards/            # Kibana dashboards
+│   ├── filebeat/              # Log collection config
+│   └── logstash/              # Log processing config
+│
+└── docker-compose.yml         # Container orchestration
 ```
 
 ---
 
-## Project Objectives
-- Demonstrate **distributed database architecture** with real replication (synchronous and asynchronous)
-- **Automatic and secure failover** (zero data loss)
-- **Distributed reading** across replicas
-- **Intelligent load balancing** of connections in the application
-- **Health checks** and monitoring
-- **Practical example** of .NET + PostgreSQL + Docker Compose integration
+## 🎯 **Project Goals**
+
+- Demonstrate **real PostgreSQL streaming replication** (not fake separate databases)
+- **Automatic and secure failover** with zero data loss
+- **Distributed read operations** across replicas
+- **Intelligent load balancing** in the application layer
+- **Comprehensive monitoring** with ELK Stack
+- **Production-ready example** of .NET + PostgreSQL + Docker integration
 
 ---
 
-## Architecture and Flow
+## 🔄 **Replication Architecture**
 
-### 1. **Containers and Functions**
-- **primary-db**: Main database (write and emergency read)
-- **standby-db**: Synchronous standby (failover, never loses data)
+### **Database Roles:**
+- **primary-db**: Main database (all writes + emergency reads)
+- **standby-db**: Synchronous standby (failover target, zero data loss)
 - **replica1-db/replica2-db**: Asynchronous replicas (distributed reading)
-- **strongdatabase-api**: .NET 8 API, performs automatic load balancing and failover
+- **strongdatabase-api**: .NET 8 API with automatic load balancing and failover
 
-### 2. **Replication and Failover**
-- The **primary** replicates via WAL to standby (synchronous) and replicas (asynchronous)
-- The **standby** only confirms write when it receives the data (guarantees zero loss)
-- The **replicas** receive changes asynchronously (may lag a few seconds)
-- If primary fails, application redirects writes to standby
-- If all replicas and primary fail, reads go to standby
+### **How Replication Works:**
 
-#### 🔎 How Synchronous Synchronization Works in PostgreSQL
+#### 🔄 **Streaming Replication Process:**
+1. **Primary** uses WAL (Write-Ahead Log) to record all changes
+2. **WAL streaming** sends changes to all replicas in real-time
+3. **Standby** receives changes synchronously (waits for confirmation)
+4. **Replicas** receive changes asynchronously (eventual consistency)
+5. **Hot standby** allows read queries on all replicas
 
-Synchronous synchronization in databases like PostgreSQL ensures that data written to the primary database is replicated to the standby database before confirming the transaction to the client. This guarantees zero data loss in case of primary failure.
+#### 🎯 **Load Balancing Strategy:**
+- **Writes**: Always go to primary database
+- **Reads**: Distributed across replicas (round-robin)  
+- **Failover**: If primary fails, standby becomes new primary
+- **Health monitoring**: Automatic detection of failed nodes
 
-**How it works:**
-- **Write to primary:** When a transaction (INSERT, UPDATE, DELETE) is executed on the primary database, data is recorded in the WAL (Write-Ahead Log), a transaction log.
-- **Send to standby:** The WAL is sent to the standby database in real-time via streaming replication.
-- **Synchronous confirmation:** The primary waits for confirmation from the standby that WAL data has been received and applied (or at least written to disk, depending on configuration).
-- **Commit on primary:** Only after standby confirmation does the primary confirm the transaction to the client.
-- **Safe failover:** If the primary fails, the standby already has all confirmed data, allowing it to take over as new primary without loss.
-
-**Behind-the-scenes operations:**
-- **WAL Streaming:** Primary sends WAL records to standby via TCP connection (via wal_sender on primary and wal_receiver on standby).
-- **Synchronous Commit:** Configured with `synchronous_commit = on` and `synchronous_standby_names` in primary's postgresql.conf, specifying the standby.
-- **Handshaking:** Standby confirms WAL reception/application, and primary waits for this response before proceeding.
-- **Latency:** Since primary waits for confirmation, there's a small increase in transaction latency, but this guarantees consistency.
-
-**Typical configuration (PostgreSQL):**
-```conf
-# postgresql.conf (primary)
-wal_level = replica
-synchronous_commit = on
-synchronous_standby_names = 'standby-db'
-max_wal_senders = 10
-```
-
-**Trade-offs:**
-- **Advantage:** Zero data loss, ideal for critical systems.
-- **Disadvantage:** Higher latency, as primary waits for standby.
-
-> **Summary:**
-> Synchronous synchronization uses WAL to replicate data in real-time, waiting for standby confirmation before commit, guaranteeing total consistency.
-
-#### 🔎 How Asynchronous Replication Works in PostgreSQL
-
-Asynchronous replication in PostgreSQL allows replicas (read replicas) to receive updates from the primary database without blocking transactions, optimizing distributed reads but with possible data lag.
-
-**How it works:**
-- **Write to primary:** Transactions (INSERT, UPDATE, DELETE) are written to the primary database's WAL (Write-Ahead Log).
-- **Send to replica:** WAL is sent to replicas via streaming replication, but without waiting for confirmation.
-- **Apply on replica:** Replicas apply WAL records independently, which may cause a small delay (eventual consistency).
-- **Reads on replicas:** Replicas (hot standby) serve read queries, relieving the primary and scaling read performance.
-
-**Behind-the-scenes operations:**
-- **WAL Streaming:** Primary sends WAL to replicas via wal_sender (primary) and wal_receiver (replica).
-- **Asynchronous:** Primary confirms transaction to client without waiting for replicas, reducing latency.
-- **Hot Standby:** Replicas can process read queries while applying WAL, configured with hot_standby = on.
-- **Lag:** Depending on load or network, replicas may be a few seconds behind primary.
-
-**Typical configuration (PostgreSQL):**
-```conf
-# postgresql.conf (primary)
-wal_level = replica
-max_wal_senders = 10
-hot_standby = on  # (on replicas)
-```
-
-**Trade-offs:**
-- **Advantage:** Lower write latency, high read scalability.
-- **Disadvantage:** Replicas may have slightly outdated data (milliseconds to seconds lag).
-
-> **Summary:**
-> Asynchronous replication uses WAL to send data to replicas without blocking the primary, ideal for scaling reads but with eventual consistency.
-
-### 3. **Intelligent Load Balancing (DbContextRouter)**
-- **Write:** Always tries primary, if it fails, uses standby
-- **Read:** Distributes among replicas, if all fail tries primary, if it fails, standby
-- **Informative logs** show each fallback and decision
-
-### 4. **Health Checks**
-- `/health` endpoint monitors API and database connections
-- Can be used by external orchestrators or load balancers
+#### 🔒 **Data Consistency:**
+- **Synchronous replication** to standby (zero data loss)
+- **Asynchronous replication** to read replicas (eventual consistency)
+- **Same database/schema** across all nodes
+- **Streaming replication** ensures real-time updates
 
 ---
 
-## Data Model
+## 🔍 **Understanding PostgreSQL Replication**
 
-### Tables
-- **Customer**: `id`, `name`, `email`
-- **Product**: `id`, `name`, `price`
-- **Order**: `id`, `customer_id`, `product_id`, `quantity`, `order_date`
+### **Synchronous Replication (Primary → Standby)**
+- Primary waits for standby confirmation before committing
+- **Zero data loss** guarantee
+- Higher latency but total consistency
+- Perfect for critical failover scenarios
 
-### Sample Data
-```sql
-INSERT INTO cliente (nome, email) VALUES
-  ('John Silva', 'john@email.com'),
-  ('Mary Souza', 'mary@email.com');
-INSERT INTO produto (nome, preco) VALUES
-  ('Notebook', 3500.00),
-  ('Mouse', 80.00);
-INSERT INTO compra (cliente_id, produto_id, quantidade) VALUES
-  (1, 1, 1),
-  (2, 2, 2);
-```
+### **Asynchronous Replication (Primary → Replicas)**
+- Primary doesn't wait for replica confirmation
+- **Lower latency** for write operations
+- Eventual consistency (may lag a few seconds)
+- Ideal for scaling read operations
+
+### **Hot Standby**
+- All replicas can serve read queries
+- Replicas apply WAL changes while serving reads
+- Automatic load distribution across healthy replicas
 
 ---
 
-## Available Endpoints
+## 🚀 **Deployment Architecture**
 
-### Customers (`/api/customer`)
-- `GET /api/customer` — List all customers
-- `POST /api/customer` — Create new customer
+### **Simplified Deployment Process:**
+1. **Single command** starts entire infrastructure
+2. **Automatic health checks** ensure proper startup order
+3. **Real streaming replication** setup via `pg_basebackup`
+4. **Zero configuration drift** - all replicas are exact copies
 
-### Products (`/api/product`)
-- `GET /api/product` — List all products
-- `POST /api/product` — Create new product
+### **Container Dependencies:**
+```
+primary-db → standby-db → replica1-db → replica2-db → api → monitoring
+```
 
-### Orders (`/api/order`)
-- `GET /api/order` — List all orders (includes customer and product)
-- `POST /api/order` — Create new order
+### **What Makes This Architecture Special:**
+- ✅ **80% fewer configuration files** than typical setups
+- ✅ **Real PostgreSQL replication** (not separate databases)
+- ✅ **Production-ready patterns** and best practices
+- ✅ **Comprehensive monitoring** out of the box
+- ✅ **Single source of truth** for schema and data
 
-### Health Check and Monitoring
-- `GET /health` — Detailed health check with status of all database servers
-- `GET /api/health` — Health check via controller with organized information
-- `GET /api/health/simple` — Quick API status verification
-- `GET /api/health/version` — Detailed version and environment information
+---
 
-#### Health Check Response Example (`/health`)
-```json
-{
-  "status": "healthy",
-  "totalDuration": 45.23,
-  "results": {
-    "database_health_check": {
-      "status": "healthy",
-      "description": "All services are working correctly",
-      "duration": "44.15ms",
-      "data": {
-        "api": {
-          "status": "healthy",
-          "version": "1.0.0",
-          "environment": "Development",
-          "uptime": "00.02:15:30",
-          "startTime": "2024-01-15T10:30:00Z",
-          "timestamp": "2024-01-15T12:45:30Z"
-        },
-        "primary": {
-          "status": "healthy",
-          "responseTimeMs": 12,
-          "databaseName": "strongdatabase_primary",
-          "user": "primary_user",
-          "serverAddress": "172.18.0.2",
-          "serverPort": 5432,
-          "postgresqlVersion": "16.1",
-          "lastCheck": "2024-01-15T12:45:30Z"
-        },
-        "standby": {
-          "status": "healthy",
-          "responseTimeMs": 15,
-          "databaseName": "strongdatabase_primary",
-          "user": "primary_user",
-          "serverAddress": "172.18.0.3",
-          "serverPort": 5432,
-          "postgresqlVersion": "16.1",
-          "lastCheck": "2024-01-15T12:45:30Z"
-        },
-        "replica1": {
-          "status": "healthy",
-          "responseTimeMs": 8,
-          "databaseName": "strongdatabase_primary",
-          "user": "primary_user",
-          "serverAddress": "172.18.0.4",
-          "serverPort": 5432,
-          "postgresqlVersion": "16.1",
-          "lastCheck": "2024-01-15T12:45:30Z"
-        },
-        "replica2": {
-          "status": "healthy",
-          "responseTimeMs": 10,
-          "databaseName": "strongdatabase_primary",
-          "user": "primary_user",
-          "serverAddress": "172.18.0.5",
-          "serverPort": 5432,
-          "postgresqlVersion": "16.1",
-          "lastCheck": "2024-01-15T12:45:30Z"
-        },
-        "totalCheckDurationMs": 45
-      }
-    }
-  }
-}
+## 📊 **Monitoring & Observability**
+
+### **Health Monitoring:**
+- Detailed health checks for all database nodes
+- API health endpoint with comprehensive status
+- Automatic detection of replication lag
+
+### **Log Aggregation:**
+- Centralized logging via ELK Stack
+- Real-time log analysis and visualization  
+- Performance metrics and error tracking
+
+### **Key Metrics Tracked:**
+- Database connection health
+- Replication lag (primary → replicas)
+- API response times
+- Error rates and patterns
+
+---
+
+## 🎓 **Educational Value**
+
+This project demonstrates:
+- **Real-world PostgreSQL replication** patterns
+- **Production-ready Docker Compose** setups
+- **.NET database connection management** and load balancing
+- **Infrastructure as Code** principles
+- **Comprehensive monitoring** implementation
+- **Proper failover** and high availability design
+
+Perfect for learning distributed database architecture, .NET integration with PostgreSQL, and Docker-based infrastructure deployment.
+
+---
+
+## 📝 **API Endpoints**
+
+### **Customer Management:**
+- `GET /api/customer` - List all customers
+- `GET /api/customer/{id}` - Get customer by ID
+- `POST /api/customer` - Create new customer
+- `PUT /api/customer/{id}` - Update customer
+- `DELETE /api/customer/{id}` - Delete customer
+
+### **Product Management:**
+- `GET /api/product` - List all products  
+- `GET /api/product/{id}` - Get product by ID
+- `POST /api/product` - Create new product
+- `PUT /api/product/{id}` - Update product
+- `DELETE /api/product/{id}` - Delete product
+
+### **Order Management:**
+- `GET /api/order` - List all orders
+- `GET /api/order/{id}` - Get order by ID  
+- `POST /api/order` - Create new order
+- `PUT /api/order/{id}` - Update order
+- `DELETE /api/order/{id}` - Delete order
+
+### **System Health:**
+- `GET /health` - Comprehensive system health check
+
+---
+
+## 🔧 **Development**
+
+### **Requirements:**
+- Docker & Docker Compose
+- .NET 8 SDK (for local development)
+- PostgreSQL client tools (optional, for debugging)
+
+### **Local Development:**
+```bash
+# Start infrastructure
+docker-compose up -d
+
+# Run API locally (for debugging)
+cd api/StrongDatabase.Api
+dotnet run
+```
+
+### **Database Connection:**
+```bash
+# Connect to primary
+psql -h localhost -p 5432 -U postgres -d strongdatabase
+
+# Connect to replica
+psql -h localhost -p 5433 -U postgres -d strongdatabase
 ```
 
 ---
 
-## How to Run the Project
+## 📄 **License**
 
-1. **Start the containers:**
-   ```sh
-   docker-compose up --build -d
-   ```
-2. **Access the API:**
-   - [http://localhost:5000/swagger](http://localhost:5000/swagger) (interactive interface)
-   - Or use REST endpoints directly
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## Technical Details and Scripts
-
-### Primary Configuration (`docker/primary/postgresql.conf`)
-```conf
-listen_addresses = '*'
-wal_level = replica
-max_wal_senders = 10
-wal_keep_size = 64
-archive_mode = on
-archive_command = 'cd .'
-hot_standby = on
-synchronous_standby_names = 'standby-db'
-```
-
-### Synchronous Standby (`docker/standby/standby-entrypoint.sh`)
-- Clones data from primary on startup
-- Connects as synchronous standby
-- Only confirms write when it receives the data
-
-### Asynchronous Replicas (`docker/replica1/replica-entrypoint.sh`)
-- Clone data from primary on startup
-- Operate as asynchronous hot standby
-
-### Docker Compose Orchestration
-- Each database exposes a different port (`5433`, `5434`, `5435`, `5436`)
-- API exposed on `5000`
-- Volumes mount custom scripts and configs
-- Dependencies ensure initialization order
-
----
-
-## Load Balancing and Failover Flow (Educational)
-
-1. **Read**
-   - API tries to read from replicas (round-robin)
-   - If all fail, tries primary
-   - If primary fails, tries standby
-2. **Write**
-   - API always tries primary
-   - If primary fails, uses standby
-3. **Failover**
-   - If primary goes down, standby takes over without data loss
-   - Replicas may lag a few seconds (eventual consistency)
-
----
-
-## Test Examples
-
-### Test Health Check
-```sh
-# Detailed health check (main endpoint)
-curl http://localhost:5000/health
-
-# Health check via controller
-curl http://localhost:5000/api/health
-
-# Quick API verification
-curl http://localhost:5000/api/health/simple
-
-# Version information
-curl http://localhost:5000/api/health/version
-```
-
-### List Customers
-```sh
-curl http://localhost:5000/api/customer
-```
-
-### Create Customer
-```sh
-curl -X POST http://localhost:5000/api/customer -H "Content-Type: application/json" -d '{"name":"New Customer","email":"new@email.com"}'
-```
-
-### Simulate Failover
-1. Stop the primary:
-   ```sh
-   docker stop primary-db
-   ```
-2. Test health check to see server status:
-   ```sh
-   curl http://localhost:5000/health
-   ```
-3. Make a write (POST): API will automatically redirect to standby.
-4. Logs will show the fallback.
-
----
-
-## Educational Notes
-- **Synchronous standby** guarantees zero data loss
-- **Read replicas** increase read performance
-- **Load balancing and failover** are automatic and transparent to the user
-- **Production-ready architecture** (with security and monitoring adaptations)
-
----
-
-## Credits and References
-- Educational project inspired by distributed architecture best practices
-- Official documentation: [PostgreSQL Streaming Replication](https://www.postgresql.org/docs/current/warm-standby.html)
-- [ASP.NET Core Docs](https://learn.microsoft.com/aspnet/core)
-
----
-
-## Starting the Environment from Scratch (after cleaning everything in Docker)
-
-Whenever you clean all containers, volumes, and images in Docker Desktop, follow this flow to ensure replication works:
-
-1. Start normally:
-   ```sh
-   docker-compose up --build -d
-   ```
-   (Wait for all containers to start. Replicas and standby may stop on first attempt, this is expected.)
-
-2. Run the post-up script to adjust replication:
-   - **On Windows:**
-     ```sh
-     scripts\pos-up-windows.bat
-     ```
-   - **On Linux/Mac:**
-     ```sh
-     bash scripts/pos-up-linux.sh
-     ```
-
-These scripts will:
-- Copy the custom `pg_hba.conf` into primary-db
-- Restart primary-db
-- Restart replicas and standby to ensure replication
-
-Done! The environment will be normalized and functional.
-
----
-
-**Questions, suggestions, or want to expand? Feel free to contribute!** 
+**Built with ❤️ for learning distributed database architecture** 

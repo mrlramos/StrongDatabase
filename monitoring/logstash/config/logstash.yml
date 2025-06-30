@@ -1,0 +1,6 @@
+http.host: "0.0.0.0"
+xpack.monitoring.elasticsearch.hosts: [ "http://elasticsearch:9200" ]
+pipeline.batch.size: 1000
+pipeline.batch.delay: 50
+log.level: info
+path.logs: /usr/share/logstash/logs 

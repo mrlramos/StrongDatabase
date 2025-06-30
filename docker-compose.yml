@@ -1,19 +1,37 @@
 version: '3.9'
 
 services:
+  # ===========================
+  # DATABASE LAYER
+  # ===========================
+  
   primary-db:
     image: postgres:16
     container_name: primary-db
     environment:
-      POSTGRES_DB: strongdatabase_primary
-      POSTGRES_USER: primary_user
-      POSTGRES_PASSWORD: primary_pass
+      POSTGRES_DB: strongdatabase
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_pass
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: replicator_pass
     ports:
       - '5433:5432'
     volumes:
-      - ./scripts/create_primary.sql:/docker-entrypoint-initdb.d/create_primary.sql:ro
-      - ./docker/primary/postgresql.conf:/etc/postgresql/postgresql.conf:ro
-      - ./docker/primary/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./database/init-schema.sql:/docker-entrypoint-initdb.d/init-schema.sql:ro
+      - ./database/postgres-primary.conf:/etc/postgresql/postgresql.conf:ro
+      - ./database/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d strongdatabase"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=primary-db,environment=development"
     networks:
       - strongdatabase_net
 
@@ -21,17 +39,34 @@ services:
     image: postgres:16
     container_name: standby-db
     environment:
-      POSTGRES_DB: strongdatabase_standby
-      POSTGRES_USER: standby_user
-      POSTGRES_PASSWORD: standby_pass
+      POSTGRES_DB: strongdatabase
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_pass
+      POSTGRES_PRIMARY_HOST: primary-db
+      POSTGRES_PRIMARY_PORT: 5432
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: replicator_pass
     ports:
       - '5434:5432'
-    entrypoint: ["/docker-entrypoint-initdb.d/standby-entrypoint.sh"]
     volumes:
-      - ./scripts/create_standby.sql:/docker-entrypoint-initdb.d/create_standby.sql:ro
-      - ./docker/standby/postgresql.conf:/etc/postgresql/postgresql.conf:ro
-      - ./docker/standby/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
-      - ./docker/standby/standby-entrypoint.sh:/docker-entrypoint-initdb.d/standby-entrypoint.sh:ro
+      - ./database/setup-replica.sh:/docker-entrypoint-initdb.d/setup-replica.sh:ro
+      - ./database/postgres-replica.conf:/etc/postgresql/postgresql.conf:ro
+      - ./database/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    entrypoint: ["/docker-entrypoint-initdb.d/setup-replica.sh"]
+    depends_on:
+      primary-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d strongdatabase"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=standby-db,environment=development"
     networks:
       - strongdatabase_net
 
@@ -39,17 +74,34 @@ services:
     image: postgres:16
     container_name: replica1-db
     environment:
-      POSTGRES_DB: strongdatabase_replica1
-      POSTGRES_USER: replica1_user
-      POSTGRES_PASSWORD: replica1_pass
+      POSTGRES_DB: strongdatabase
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_pass
+      POSTGRES_PRIMARY_HOST: primary-db
+      POSTGRES_PRIMARY_PORT: 5432
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: replicator_pass
     ports:
       - '5435:5432'
-    entrypoint: ["/docker-entrypoint-initdb.d/replica-entrypoint.sh"]
     volumes:
-      - ./scripts/create_replica1.sql:/docker-entrypoint-initdb.d/create_replica1.sql:ro
-      - ./docker/replica1/postgresql.conf:/etc/postgresql/postgresql.conf:ro
-      - ./docker/replica1/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
-      - ./docker/replica1/replica-entrypoint.sh:/docker-entrypoint-initdb.d/replica-entrypoint.sh:ro
+      - ./database/setup-replica.sh:/docker-entrypoint-initdb.d/setup-replica.sh:ro
+      - ./database/postgres-replica.conf:/etc/postgresql/postgresql.conf:ro
+      - ./database/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    entrypoint: ["/docker-entrypoint-initdb.d/setup-replica.sh"]
+    depends_on:
+      primary-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d strongdatabase"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=replica1-db,environment=development"
     networks:
       - strongdatabase_net
 
@@ -57,33 +109,192 @@ services:
     image: postgres:16
     container_name: replica2-db
     environment:
-      POSTGRES_DB: strongdatabase_replica2
-      POSTGRES_USER: replica2_user
-      POSTGRES_PASSWORD: replica2_pass
+      POSTGRES_DB: strongdatabase
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_pass
+      POSTGRES_PRIMARY_HOST: primary-db
+      POSTGRES_PRIMARY_PORT: 5432
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: replicator_pass
     ports:
       - '5436:5432'
-    entrypoint: ["/docker-entrypoint-initdb.d/replica-entrypoint.sh"]
     volumes:
-      - ./scripts/create_replica2.sql:/docker-entrypoint-initdb.d/create_replica2.sql:ro
-      - ./docker/replica2/postgresql.conf:/etc/postgresql/postgresql.conf:ro
-      - ./docker/replica2/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
-      - ./docker/replica2/replica-entrypoint.sh:/docker-entrypoint-initdb.d/replica-entrypoint.sh:ro
+      - ./database/setup-replica.sh:/docker-entrypoint-initdb.d/setup-replica.sh:ro
+      - ./database/postgres-replica.conf:/etc/postgresql/postgresql.conf:ro
+      - ./database/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    entrypoint: ["/docker-entrypoint-initdb.d/setup-replica.sh"]
+    depends_on:
+      primary-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d strongdatabase"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=replica2-db,environment=development"
     networks:
       - strongdatabase_net
 
+  # ===========================
+  # API LAYER
+  # ===========================
+  
   api:
     build:
       context: .
-      dockerfile: StrongDatabase.Api/Dockerfile
+      dockerfile: api/StrongDatabase.Api/Dockerfile
     container_name: strongdatabase-api
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - ElasticConfiguration__Uri=http://elasticsearch:9200
     ports:
       - "5000:80"
     depends_on:
-      - primary-db
+      primary-db:
+        condition: service_healthy
+      standby-db:
+        condition: service_healthy
+      replica1-db:
+        condition: service_healthy  
+      replica2-db:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=strongdatabase-api,environment=development"
     networks:
       - strongdatabase_net
+
+  # ===========================
+  # MONITORING LAYER (ELK Stack)
+  # ===========================
+  
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=elasticsearch,environment=development"
+    networks:
+      - strongdatabase_net
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: logstash
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+    volumes:
+      - ./monitoring/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./monitoring/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    environment:
+      - "LS_JAVA_OPTS=-Xmx1g -Xms512m"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=logstash,environment=development"
+    networks:
+      - strongdatabase_net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - xpack.security.enabled=false
+      - xpack.encryptedSavedObjects.encryptionKey=strongdatabase-kibana-encryption-key-32-chars
+    volumes:
+      - ./monitoring/dashboards:/usr/share/kibana/data/dashboards:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=kibana,environment=development"
+    networks:
+      - strongdatabase_net
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: filebeat
+    user: root
+    command: >
+      filebeat
+      -e
+      -strict.perms=false
+    volumes:
+      - ./monitoring/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - ELASTICSEARCH_HOST=elasticsearch:9200
+      - KIBANA_HOST=kibana:5601
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=filebeat,environment=development"
+    networks:
+      - strongdatabase_net
+
+# ===========================
+# NETWORKS & VOLUMES
+# ===========================
+
+volumes:
+  elasticsearch_data:
+    driver: local
 
 networks:
   strongdatabase_net:
