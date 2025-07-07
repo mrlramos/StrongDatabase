@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Npgsql;
+using MySql.Data.MySqlClient;
 using System.Diagnostics;
 
 namespace StrongDatabase.Api.Services
@@ -74,17 +74,17 @@ namespace StrongDatabase.Api.Services
             
             try
             {
-                using var connection = new NpgsqlConnection(connectionString);
+                using var connection = new MySqlConnection(connectionString);
                 await connection.OpenAsync(cancellationToken);
                 
                 // Check if we can execute a simple query
-                using var command = new NpgsqlCommand(@"
+                using var command = new MySqlCommand(@"
                     SELECT 
-                        version(), 
-                        current_database(), 
-                        current_user,
-                        COALESCE(inet_server_addr()::text, 'localhost') as server_addr,
-                        COALESCE(inet_server_port(), 5432) as server_port;", connection);
+                        VERSION() as version, 
+                        DATABASE() as current_database, 
+                        USER() as current_user,
+                        @@hostname as server_addr,
+                        @@port as server_port;", connection);
                 using var reader = await command.ExecuteReaderAsync(cancellationToken);
                 
                 if (await reader.ReadAsync(cancellationToken))
@@ -105,7 +105,7 @@ namespace StrongDatabase.Api.Services
                         user = user,
                         server_address = serverAddr,
                         server_port = serverPort,
-                        postgresql_version = version.Split(' ').Length > 1 ? version.Split(' ')[1] : version,
+                        mysql_version = version,
                         last_check = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
                     };
                 }

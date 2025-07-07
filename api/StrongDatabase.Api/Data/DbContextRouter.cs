@@ -253,10 +253,10 @@ namespace StrongDatabase.Api.Data
         private AppDbContext CreateContext(string connectionString, string databaseName)
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseNpgsql(connectionString, npgsqlOptions =>
+                .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mysqlOptions =>
                 {
-                    npgsqlOptions.CommandTimeout(15); // Timeout mais agressivo
-                    npgsqlOptions.EnableRetryOnFailure(maxRetryCount: 2, maxRetryDelay: TimeSpan.FromSeconds(3), errorCodesToAdd: null);
+                    mysqlOptions.CommandTimeout(15); // Timeout mais agressivo
+                    mysqlOptions.EnableRetryOnFailure(maxRetryCount: 2, maxRetryDelay: TimeSpan.FromSeconds(3), errorNumbersToAdd: null);
                 })
                 .EnableSensitiveDataLogging(_config.GetValue<bool>("DetailedErrors", false))
                 .EnableDetailedErrors(_config.GetValue<bool>("DetailedErrors", false))

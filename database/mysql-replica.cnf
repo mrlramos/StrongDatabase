@@ -1,0 +1,59 @@
+[mysqld]
+# Replica MySQL Configuration for StrongDatabase
+
+# Basic settings
+bind-address = 0.0.0.0
+port = 3306
+sql_mode = STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
+
+# Character set and collation
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci
+
+# InnoDB settings
+default-storage-engine = InnoDB
+innodb_buffer_pool_size = 256M
+innodb_log_file_size = 64M
+innodb_flush_log_at_trx_commit = 1
+innodb_lock_wait_timeout = 30
+
+# Binary logging and replication settings
+log-bin = mysql-bin
+binlog_format = ROW
+sync_binlog = 1
+expire_logs_days = 7
+max_binlog_size = 100M
+
+# GTID settings for MySQL 8.0
+gtid_mode = ON
+enforce_gtid_consistency = ON
+log_slave_updates = ON
+
+# Read-only settings for replica
+read_only = ON
+super_read_only = ON
+
+# Replica-specific settings
+relay_log = relay-bin
+relay_log_index = relay-bin.index
+relay_log_recovery = ON
+slave_skip_errors = 1062,1053,1146
+
+# Security and networking
+skip_name_resolve = 1
+max_connections = 200
+max_connect_errors = 10000
+
+# Performance settings
+query_cache_type = 0
+query_cache_size = 0
+thread_cache_size = 16
+table_open_cache = 2000
+tmp_table_size = 64M
+max_heap_table_size = 64M
+
+# Logging
+log_error = /var/log/mysql/error.log
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 2 
